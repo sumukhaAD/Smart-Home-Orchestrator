@@ -129,19 +129,21 @@ export function CommandBar({ onResponse }: CommandBarProps) {
       const geminiService = new GeminiService(geminiKey);
       
       // Initialize ScaleDown service if enabled
-      let scaledownService: ScaleDownService | undefined;
-      let compressionFunction: ((text: string) => Promise<string>) | undefined;
+let scaledownService: ScaleDownService | undefined;
+let compressionFunction: ((text: string) => Promise<string>) | undefined;
 
-      if (compressionEnabled && scaledownKey && scaledownKey.trim() !== '') {
-        console.log('🔧 Initializing ScaleDown service...');
-        scaledownService = new ScaleDownService(scaledownKey);
-        
-        // Create compression function that returns just the compressed text
-        compressionFunction = async (text: string) => {
-          const result = await scaledownService!.compressPrompt(text);
-          return result.compressed_prompt;
-        };
-      }
+if (compressionEnabled && scaledownKey && scaledownKey.trim() !== '') {
+  console.log('🔧 Initializing ScaleDown service...');
+  scaledownService = new ScaleDownService(scaledownKey);
+  
+  // Create compression function that returns just the compressed text
+  compressionFunction = async (text: string) => {
+    // We can optionally separate context and prompt for better compression
+    // For now, we'll compress the entire prompt
+    const result = await scaledownService!.compressPrompt(text, '');
+    return result.compressed_prompt;
+  };
+}
 
       // Process command with integrated compression
       const response = await geminiService.processCommand(

@@ -102,8 +102,7 @@ CRITICAL INSTRUCTIONS:
     const fullPrompt = `${systemPrompt}\n\nUser Command: "${command}"\n\nRespond with JSON only:`;
 
     console.log('=== TOKEN COMPRESSION ANALYSIS ===');
-    console.log('📝 Original Prompt:');
-    console.log(fullPrompt);
+    console.log('📝 Original Prompt Length:', fullPrompt.length, 'characters');
     console.log('\n📊 Original Stats:');
     const originalTokens = this.estimateTokens(fullPrompt);
     const originalChars = fullPrompt.length;
@@ -114,41 +113,46 @@ CRITICAL INSTRUCTIONS:
     let compressedTokens = originalTokens;
     let compressionRatio = 0;
 
-    // Apply ScaleDown compression if enabled
-    if (scaleDownEnabled && compressPromptFn) {
-      try {
-        console.log('\n🔄 ScaleDown Compression: ENABLED');
-        console.log('⏳ Compressing prompt...');
-        
-        const compressionStartTime = performance.now();
-        finalPrompt = await compressPromptFn(fullPrompt);
-        const compressionEndTime = performance.now();
-        
-        compressedTokens = this.estimateTokens(finalPrompt);
-        const compressedChars = finalPrompt.length;
-        compressionRatio = ((originalTokens - compressedTokens) / originalTokens) * 100;
-        
-        console.log('\n✅ Compression Complete!');
-        console.log('📝 Compressed Prompt:');
-        console.log(finalPrompt);
-        console.log('\n📊 Compressed Stats:');
-        console.log(`  Characters: ${compressedChars} (${((compressedChars / originalChars) * 100).toFixed(1)}% of original)`);
-        console.log(`  Estimated Tokens: ${compressedTokens}`);
-        console.log(`  Compression Time: ${(compressionEndTime - compressionStartTime).toFixed(2)}ms`);
-        console.log('\n💾 Token Savings:');
-        console.log(`  Tokens Saved: ${originalTokens - compressedTokens}`);
-        console.log(`  Compression Ratio: ${compressionRatio.toFixed(2)}%`);
-        console.log(`  Character Reduction: ${originalChars - compressedChars} chars (${(((originalChars - compressedChars) / originalChars) * 100).toFixed(1)}%)`);
-      } catch (error) {
-        console.error('❌ ScaleDown compression failed:', error);
-        console.log('⚠️  Falling back to original prompt');
-        finalPrompt = fullPrompt;
-        compressedTokens = originalTokens;
-      }
-    } else {
-      console.log('\n🔄 ScaleDown Compression: DISABLED');
-      console.log('ℹ️  Using original prompt without compression');
-    }
+ // Apply compression if enabled
+if (scaleDownEnabled) {
+  try {
+    console.log('\n🔄 Compression: ENABLED (Local compression - conservative mode)');
+    console.log('⏳ Applying compression...');
+    
+    const compressionStartTime = performance.now();
+    
+    // More conservative compression - only remove whitespace
+    const compressedPrompt = fullPrompt
+      .replace(/\n\n\n+/g, '\n\n')     // Remove triple+ newlines only
+      .replace(/   +/g, '  ')           // Remove excessive spaces (3+ → 2)
+      .trim();
+    
+    finalPrompt = compressedPrompt;
+    
+    const compressionEndTime = performance.now();
+    
+    compressedTokens = this.estimateTokens(finalPrompt);
+    const compressedChars = finalPrompt.length;
+    compressionRatio = ((originalTokens - compressedTokens) / originalTokens) * 100;
+    
+    console.log('\n✅ Compression Complete!');
+    console.log('📊 Compressed Stats:');
+    console.log(`  Characters: ${compressedChars} (${((compressedChars / originalChars) * 100).toFixed(1)}% of original)`);
+    console.log(`  Estimated Tokens: ${compressedTokens}`);
+    console.log(`  Compression Time: ${(compressionEndTime - compressionStartTime).toFixed(2)}ms`);
+    console.log('\n💾 Token Savings:');
+    console.log(`  Tokens Saved: ${originalTokens - compressedTokens}`);
+    console.log(`  Compression Ratio: ${compressionRatio.toFixed(2)}%`);
+  } catch (error) {
+    console.error('❌ Compression failed:', error);
+    console.log('⚠️  Falling back to original prompt');
+    finalPrompt = fullPrompt;
+    compressedTokens = originalTokens;
+  }
+} else {
+  console.log('\n🔄 Compression: DISABLED');
+  console.log('ℹ️  Using original prompt without compression');
+}
 
     console.log('\n=== END TOKEN ANALYSIS ===\n');
 
